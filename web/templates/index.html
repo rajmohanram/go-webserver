@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Web Server</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Go Web Server</a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8">
+                <h2>Welcome to Go Web Server</h2>
+                <p class="lead">A demonstration of REST API and WebSocket features in Go</p>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h4>Features</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul>
+                            <li><strong>REST API:</strong> CRUD operations at <code>/api/v1/users</code></li>
+                            <li><strong>WebSocket:</strong> Real-time communication at <code>/ws/</code></li>
+                            <li><strong>In-Memory Storage:</strong> Fast data access</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h4>User Management</h4>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary" onclick="loadUsers()">Load Users</button>
+                        <button class="btn btn-success" onclick="showAddUserForm()">Add New User</button>
+                        <div id="usersList" class="mt-3"></div>
+                        <div id="addUserForm" class="mt-3" style="display:none;">
+                            <h5>Add New User</h5>
+                            <input type="text" id="userName" class="form-control mb-2" placeholder="Name">
+                            <input type="email" id="userEmail" class="form-control mb-2" placeholder="Email">
+                            <button class="btn btn-primary" onclick="addUser()">Submit</button>
+                            <button class="btn btn-secondary" onclick="hideAddUserForm()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>WebSocket Chat</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="messages" style="height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px;">
+                            <small class="text-muted">Connect to start chatting...</small>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="messageInput" class="form-control" placeholder="Type a message...">
+                            <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+                        </div>
+                        <button class="btn btn-success btn-sm mt-2" onclick="connectWebSocket()">Connect</button>
+                        <button class="btn btn-danger btn-sm mt-2" onclick="disconnectWebSocket()">Disconnect</button>
+                        <span id="wsStatus" class="badge bg-secondary ms-2">Disconnected</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let ws = null;
+
+        // Load users from API
+        function loadUsers() {
+            fetch('/api/v1/users')
+                .then(response => response.json())
+                .then(users => {
+                    const usersList = document.getElementById('usersList');
+                    if (users.length === 0) {
+                        usersList.innerHTML = '<p class="text-muted">No users found</p>';
+                        return;
+                    }
+                    let html = '<table class="table table-striped"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Actions</th></tr></thead><tbody>';
+                    users.forEach(user => {
+                        html += '<tr><td>' + user.id + '</td><td>' + user.name + '</td><td>' + user.email + '</td><td><button class="btn btn-sm btn-danger" onclick="deleteUser(' + user.id + ')">Delete</button></td></tr>';
+                    });
+                    html += '</tbody></table>';
+                    usersList.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading users:', error);
+                    alert('Failed to load users');
+                });
+        }
+
+        function showAddUserForm() {
+            document.getElementById('addUserForm').style.display = 'block';
+        }
+
+        function hideAddUserForm() {
+            document.getElementById('addUserForm').style.display = 'none';
+            document.getElementById('userName').value = '';
+            document.getElementById('userEmail').value = '';
+        }
+
+        function addUser() {
+            const name = document.getElementById('userName').value;
+            const email = document.getElementById('userEmail').value;
+
+            if (!name || !email) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            fetch('/api/v1/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, email: email })
+            })
+            .then(response => response.json())
+            .then(user => {
+                hideAddUserForm();
+                loadUsers();
+                alert('User added successfully!');
+            })
+            .catch(error => {
+                console.error('Error adding user:', error);
+                alert('Failed to add user');
+            });
+        }
+
+        function deleteUser(id) {
+            if (!confirm('Are you sure you want to delete this user?')) return;
+
+            fetch('/api/v1/users/' + id, { method: 'DELETE' })
+                .then(response => {
+                    if (response.ok) {
+                        loadUsers();
+                        alert('User deleted successfully!');
+                    } else {
+                        alert('Failed to delete user');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting user:', error);
+                    alert('Failed to delete user');
+                });
+        }
+
+        // WebSocket functionality
+        function connectWebSocket() {
+            if (ws) {
+                alert('Already connected');
+                return;
+            }
+
+            ws = new WebSocket('ws://' + window.location.host + '/ws/');
+
+            ws.onopen = function() {
+                document.getElementById('wsStatus').textContent = 'Connected';
+                document.getElementById('wsStatus').className = 'badge bg-success ms-2';
+                addMessageToChat('System', 'Connected to WebSocket server');
+            };
+
+            ws.onmessage = function(event) {
+                addMessageToChat('Server', event.data);
+            };
+
+            ws.onclose = function() {
+                document.getElementById('wsStatus').textContent = 'Disconnected';
+                document.getElementById('wsStatus').className = 'badge bg-secondary ms-2';
+                addMessageToChat('System', 'Disconnected from WebSocket server');
+                ws = null;
+            };
+
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                addMessageToChat('System', 'WebSocket error occurred');
+            };
+        }
+
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Please connect to WebSocket first');
+                return;
+            }
+
+            ws.send(message);
+            addMessageToChat('You', message);
+            input.value = '';
+        }
+
+        function addMessageToChat(sender, message) {
+            const messagesDiv = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            const timestamp = new Date().toLocaleTimeString();
+            messageElement.innerHTML = '<small class="text-muted">' + timestamp + '</small> <strong>' + sender + ':</strong> ' + message;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Allow Enter key to send message
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
