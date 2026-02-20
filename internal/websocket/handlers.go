@@ -26,6 +26,17 @@ func NewHandler(hub *Hub) *Handler {
 
 // HandleWebSocket upgrades HTTP connection to WebSocket
 func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Debug: Print all request headers
+	log.Println("=== WebSocket Connection Attempt ===")
+	log.Printf("Method: %s, URL: %s, Proto: %s", r.Method, r.URL.String(), r.Proto)
+	log.Println("Request Headers:")
+	for name, values := range r.Header {
+		for _, value := range values {
+			log.Printf("  %s: %s (len=%d)", name, value, len(value))
+		}
+	}
+	log.Println("====================================")
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade error: %v", err)
