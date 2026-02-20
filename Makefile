@@ -4,6 +4,8 @@
 build:
 	@echo "Building server..."
 	@go build -o bin/server ./cmd/server
+	@GOOS=linux GOARCH=amd64 go build -o bin/server-linux-amd64 ./cmd/server
+	@GOOS=linux GOARCH=arm64 go build -o bin/server-linux-arm64 ./cmd/server
 
 # Run the server
 run:
