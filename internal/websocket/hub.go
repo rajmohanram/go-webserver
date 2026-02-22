@@ -43,26 +43,32 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
-				client.Close()
+				// Don't close here - it's closed in the handler's defer
 			}
 			h.mu.Unlock()
 			log.Printf("Client disconnected. Total clients: %d", len(h.clients))
 
 		case message := <-h.broadcast:
 			h.mu.RLock()
+			clientsToRemove := []*websocket.Conn{}
 			for client := range h.clients {
 				err := client.WriteMessage(websocket.TextMessage, message)
 				if err != nil {
 					log.Printf("Error broadcasting to client: %v", err)
-					client.Close()
-					h.mu.RUnlock()
-					h.mu.Lock()
-					delete(h.clients, client)
-					h.mu.Unlock()
-					h.mu.RLock()
+					clientsToRemove = append(clientsToRemove, client)
 				}
 			}
 			h.mu.RUnlock()
+
+			// Remove failed clients
+			if len(clientsToRemove) > 0 {
+				h.mu.Lock()
+				for _, client := range clientsToRemove {
+					delete(h.clients, client)
+					client.Close()
+				}
+				h.mu.Unlock()
+			}
 		}
 	}
 }

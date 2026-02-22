@@ -290,7 +290,16 @@
 
         function disconnectWebSocket() {
             if (ws) {
-                ws.close();
+                // Send close frame with proper code
+                ws.close(1000, 'Client disconnecting');
+                // Set a timeout in case onclose doesn't fire
+                setTimeout(function() {
+                    if (ws) {
+                        ws = null;
+                        document.getElementById('wsStatus').textContent = 'Disconnected';
+                        document.getElementById('wsStatus').className = 'badge bg-secondary ms-2';
+                    }
+                }, 1000);
             }
         }
 

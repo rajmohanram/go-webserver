@@ -48,13 +48,18 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		defer func() {
 			h.hub.Unregister(conn)
+			conn.Close()
 		}()
 
 		for {
 			_, message, err := conn.ReadMessage()
 			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Printf("WebSocket error: %v", err)
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+					log.Printf("WebSocket closed normally: %v", err)
+				} else if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					log.Printf("WebSocket unexpected close error: %v", err)
+				} else {
+					log.Printf("WebSocket read error: %v", err)
 				}
 				break
 			}
