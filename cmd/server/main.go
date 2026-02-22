@@ -35,6 +35,9 @@ func main() {
 	// Homepage
 	r.HandleFunc("/", homeHandler).Methods("GET")
 
+	// Favicon
+	r.HandleFunc("/favicon.ico", faviconHandler).Methods("GET")
+
 	// REST API endpoints
 	apiRouter := r.PathPrefix("/api/v1").Subrouter()
 	apiRouter.HandleFunc("/users", apiHandler.GetUsers).Methods("GET")
@@ -107,6 +110,11 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 
 func blogHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/blog/index.html")
+}
+
+func faviconHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/svg+xml")
+	http.ServeFile(w, r, "web/favicon.svg")
 }
 
 func getPort() string {
