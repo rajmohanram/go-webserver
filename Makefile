@@ -7,6 +7,11 @@ build:
 	@GOOS=linux GOARCH=amd64 go build -o bin/server-linux-amd64 ./cmd/server
 	@GOOS=linux GOARCH=arm64 go build -o bin/server-linux-arm64 ./cmd/server
 
+# Build container image
+docker-build: build
+	@echo "Building Docker image..."
+	@docker build -t go-webserver:latest .
+
 # Run the server
 run:
 	@echo "Running server..."
