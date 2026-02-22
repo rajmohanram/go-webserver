@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog - Go Web Server</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/blog/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Go Web Server</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="/blog">Blog</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/api/v1/users">API</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="container">
+            <img src="/blog/static/images/logo.svg" alt="Blog Logo" class="hero-image">
+            <h1>Welcome to Our Blog</h1>
+            <p>Insights and updates about Go web development</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <article class="blog-post">
+            <div class="post-header">
+                <h2>Getting Started with Go Web Server</h2>
+                <div class="post-meta">
+                    <span class="date">February 21, 2026</span>
+                    <span class="author">Go Team</span>
+                </div>
+            </div>
+            <div class="post-content">
+                <p>Building web servers in Go is straightforward and powerful. This blog post explores the key features of our Go web server implementation.</p>
+
+                <h3>Key Features</h3>
+                <ul>
+                    <li>RESTful API with CRUD operations</li>
+                    <li>WebSocket support for real-time communication</li>
+                    <li>TLS/HTTPS support with HTTP/1.1</li>
+                    <li>In-memory data storage</li>
+                    <li>Static file serving</li>
+                </ul>
+
+                <h3>Architecture</h3>
+                <p>Our server uses the Gorilla Mux router for flexible routing and Gorilla WebSocket for real-time features. The modular design makes it easy to extend and maintain.</p>
+
+                <div class="code-block">
+                    <pre><code>// Example API endpoint
+func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    id := vars["id"]
+    // Handle request...
+}</code></pre>
+                </div>
+
+                <p>Click the button below to see the interactive demo:</p>
+                <button id="demoBtn" class="btn">Run Demo</button>
+                <div id="demoOutput" class="demo-output"></div>
+            </div>
+        </article>
+
+        <article class="blog-post">
+            <div class="post-header">
+                <h2>WebSocket Real-Time Communication</h2>
+                <div class="post-meta">
+                    <span class="date">February 20, 2026</span>
+                    <span class="author">Go Team</span>
+                </div>
+            </div>
+            <div class="post-content">
+                <p>WebSockets enable bidirectional communication between the client and server. Our implementation supports both secure (wss://) and insecure (ws://) connections.</p>
+
+                <p>The WebSocket hub manages all connected clients and broadcasts messages efficiently using Go channels and goroutines.</p>
+            </div>
+        </article>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Go Web Server. Built with Go and passion.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/blog/static/js/main.js"></script>
+</body>
+</html>

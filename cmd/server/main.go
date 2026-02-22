@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"go-webservere/internal/api"
 	"go-webservere/internal/cert"
@@ -44,6 +46,13 @@ func main() {
 	// WebSocket endpoint
 	r.HandleFunc("/ws/", wsHandler.HandleWebSocket)
 
+	// Blog page
+	r.HandleFunc("/blog", blogHandler).Methods("GET")
+
+	// Static files for blog (CSS, JS, images)
+	blogStaticFS := http.FileServer(http.Dir("web/blog/static"))
+	r.PathPrefix("/blog/static/").Handler(http.StripPrefix("/blog/static/", blogStaticFS))
+
 	// Generate or load TLS certificates
 	certFile := "server.crt"
 	keyFile := "server.key"
@@ -75,12 +84,14 @@ func main() {
 	port := getPort()
 	server := &http.Server{
 		Addr:      port,
-		Handler:   r,
+		Handler:   loggingMiddleware(r),
 		TLSConfig: tlsConfig,
+		ErrorLog:  log.New(&tlsErrorFilter{}, "", log.LstdFlags),
 	}
 
 	log.Printf("Server starting on port %s with TLS (HTTP/1.1 only)", port)
 	log.Printf("Homepage: https://localhost%s", port)
+	log.Printf("Blog: https://localhost%s/blog", port)
 	log.Printf("API: https://localhost%s/api/v1/users", port)
 	log.Printf("WebSocket: wss://localhost%s/ws/", port)
 	log.Println("Note: Using self-signed certificate - browsers will show security warnings")
@@ -94,6 +105,10 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/templates/index.html")
 }
 
+func blogHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "web/blog/index.html")
+}
+
 func getPort() string {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -103,4 +118,50 @@ func getPort() string {
 		port = ":" + port
 	}
 	return port
+}
+
+// loggingMiddleware logs all HTTP requests
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		// Wrap the ResponseWriter to capture status code
+		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		// Call the next handler
+		next.ServeHTTP(lrw, r)
+
+		// Log the request
+		duration := time.Since(start)
+		log.Printf("[ACCESS] %s %s %d %v %s",
+			r.Method,
+			r.RequestURI,
+			lrw.statusCode,
+			duration,
+			r.RemoteAddr,
+		)
+	})
+}
+
+// loggingResponseWriter wraps http.ResponseWriter to capture status code
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (lrw *loggingResponseWriter) WriteHeader(code int) {
+	lrw.statusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
+}
+
+// tlsErrorFilter filters out TLS handshake errors from server logs
+type tlsErrorFilter struct{}
+
+func (f *tlsErrorFilter) Write(p []byte) (n int, err error) {
+	msg := string(p)
+	// Filter out TLS handshake errors but keep other errors
+	if strings.Contains(msg, "TLS handshake error") {
+		return len(p), nil
+	}
+	return os.Stderr.Write(p)
 }
