@@ -57,11 +57,12 @@
                         <h4>WebSocket Chat</h4>
                     </div>
                     <div class="card-body">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="useSecureWebSocket">
-                            <label class="form-check-label" for="useSecureWebSocket">
-                                Use Secure WebSocket (WSS)
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" role="switch" id="useInsecureWebSocket">
+                            <label class="form-check-label" for="useInsecureWebSocket">
+                                Use Insecure WebSocket (WS)
                             </label>
+                            <small class="text-muted d-block">Default: Secure WebSocket (WSS)</small>
                         </div>
                         <div id="messages" style="height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px;">
                             <small class="text-muted">Connect to start chatting...</small>
@@ -167,8 +168,8 @@
                 return;
             }
 
-            const useSecure = document.getElementById('useSecureWebSocket').checked;
-            const protocol = useSecure ? 'wss://' : 'ws://';
+            const useInsecure = document.getElementById('useInsecureWebSocket').checked;
+            const protocol = useInsecure ? 'ws://' : 'wss://';
             ws = new WebSocket(protocol + window.location.host + '/ws/');
 
             ws.onopen = function() {
