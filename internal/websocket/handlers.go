@@ -4,8 +4,23 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
+)
+
+const (
+	// Time allowed to write a message to the peer
+	writeWait = 10 * time.Second
+
+	// Time allowed to read the next pong message from the peer
+	pongWait = 60 * time.Second
+
+	// Send pings to peer with this period (must be less than pongWait)
+	pingPeriod = (pongWait * 9) / 10
+
+	// Maximum message size allowed from peer
+	maxMessageSize = 512
 )
 
 var upgrader = websocket.Upgrader{
@@ -26,16 +41,7 @@ func NewHandler(hub *Hub) *Handler {
 
 // HandleWebSocket upgrades HTTP connection to WebSocket
 func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	// Debug: Print all request headers
-	log.Println("=== WebSocket Connection Attempt ===")
-	log.Printf("Method: %s, URL: %s, Proto: %s", r.Method, r.URL.String(), r.Proto)
-	log.Println("Request Headers:")
-	for name, values := range r.Header {
-		for _, value := range values {
-			log.Printf("  %s: %s (len=%d)", name, value, len(value))
-		}
-	}
-	log.Println("====================================")
+	log.Printf("WebSocket connection from %s", r.RemoteAddr)
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -45,30 +51,58 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	h.hub.Register(conn)
 
+	// Start ping ticker
+	ticker := time.NewTicker(pingPeriod)
+	defer ticker.Stop()
+
+	// Channel to signal done
+	done := make(chan struct{})
+
+	// Read pump
 	go func() {
 		defer func() {
+			close(done)
 			h.hub.Unregister(conn)
 			conn.Close()
 		}()
+
+		conn.SetReadLimit(maxMessageSize)
+		conn.SetReadDeadline(time.Now().Add(pongWait))
+		conn.SetPongHandler(func(string) error {
+			conn.SetReadDeadline(time.Now().Add(pongWait))
+			return nil
+		})
 
 		for {
 			_, message, err := conn.ReadMessage()
 			if err != nil {
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-					log.Printf("WebSocket closed normally: %v", err)
-				} else if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Printf("WebSocket unexpected close error: %v", err)
+					log.Printf("WebSocket closed normally by client: %v", err)
 				} else {
 					log.Printf("WebSocket read error: %v", err)
 				}
 				break
 			}
 
-			log.Printf("Received message: %s", message)
+			log.Printf("Received message from %s: %s", r.RemoteAddr, message)
 
 			// Broadcast message to all connected clients
 			broadcastMsg := fmt.Sprintf("Broadcast: %s", string(message))
 			h.hub.Broadcast([]byte(broadcastMsg))
 		}
 	}()
+
+	// Write pump - send pings
+	for {
+		select {
+		case <-ticker.C:
+			conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Printf("Ping error: %v", err)
+				return
+			}
+		case <-done:
+			return
+		}
+	}
 }

@@ -41,10 +41,7 @@ func (h *Hub) Run() {
 
 		case client := <-h.unregister:
 			h.mu.Lock()
-			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
-				// Don't close here - it's closed in the handler's defer
-			}
+			delete(h.clients, client)
 			h.mu.Unlock()
 			log.Printf("Client disconnected. Total clients: %d", len(h.clients))
 

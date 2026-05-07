@@ -275,10 +275,14 @@
                 addMessageToChat('Server', event.data);
             };
 
-            ws.onclose = function() {
+            ws.onclose = function(event) {
                 document.getElementById('wsStatus').textContent = 'Disconnected';
                 document.getElementById('wsStatus').className = 'badge bg-secondary ms-2';
-                addMessageToChat('System', 'Disconnected from WebSocket server');
+                if (event.wasClean) {
+                    addMessageToChat('System', 'Disconnected from WebSocket server (clean close)');
+                } else {
+                    addMessageToChat('System', 'Disconnected from WebSocket server (code: ' + event.code + ')');
+                }
                 ws = null;
             };
 
@@ -289,17 +293,15 @@
         }
 
         function disconnectWebSocket() {
-            if (ws) {
-                // Send close frame with proper code
-                ws.close(1000, 'Client disconnecting');
-                // Set a timeout in case onclose doesn't fire
-                setTimeout(function() {
-                    if (ws) {
-                        ws = null;
-                        document.getElementById('wsStatus').textContent = 'Disconnected';
-                        document.getElementById('wsStatus').className = 'badge bg-secondary ms-2';
-                    }
-                }, 1000);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                // Send close frame with normal closure code
+                ws.close(1000, 'User initiated disconnect');
+                addMessageToChat('System', 'Disconnecting...');
+            } else if (ws) {
+                // If not open, just clean up
+                ws = null;
+                document.getElementById('wsStatus').textContent = 'Disconnected';
+                document.getElementById('wsStatus').className = 'badge bg-secondary ms-2';
             }
         }
 
