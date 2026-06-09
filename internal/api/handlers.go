@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"go-webservere/internal/store"
+	"github.com/rajmohanram/go-webserver/internal/store"
 
 	"github.com/gorilla/mux"
 )

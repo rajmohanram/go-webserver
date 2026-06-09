@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"go-webservere/internal/api"
-	"go-webservere/internal/cert"
-	"go-webservere/internal/store"
-	"go-webservere/internal/websocket"
+	"github.com/rajmohanram/go-webserver/internal/api"
+	"github.com/rajmohanram/go-webserver/internal/cert"
+	"github.com/rajmohanram/go-webserver/internal/store"
+	"github.com/rajmohanram/go-webserver/internal/websocket"
 
 	"github.com/gorilla/mux"
 )

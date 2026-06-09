@@ -1,0 +1,7 @@
+.git
+.github
+bin/
+*.crt
+*.key
+README.md
+CLAUDE.md

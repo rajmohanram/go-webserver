@@ -1,4 +1,4 @@
-module go-webservere
+module github.com/rajmohanram/go-webserver
 
 go 1.23
 

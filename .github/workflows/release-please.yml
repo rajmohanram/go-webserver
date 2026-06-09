@@ -1,0 +1,94 @@
+name: Release Please
+
+# Versioning and releases for go-webserver, driven by Conventional Commits.
+#
+# Flow:
+#   1. On every push to main, release-please maintains a "Release PR" that bumps
+#      the version (fix -> patch, feat -> minor, feat!/BREAKING -> major) and
+#      updates CHANGELOG.md.
+#   2. Merging that Release PR creates the tag (vX.Y.Z) and a GitHub Release.
+#   3. The build job below then builds and publishes the multi-arch Docker image.
+#
+# The build runs in THIS workflow (gated on release_created) because tags created
+# by GITHUB_TOKEN do not trigger a separate tag-triggered workflow. This keeps the
+# whole pipeline on the built-in GITHUB_TOKEN -- no PAT required.
+#
+# The one manual step is merging the Release PR; that merge cuts the tag/release
+# and triggers the build below.
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+      version: ${{ steps.rp.outputs.version }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # ============================================
+  # Multi-arch Docker image (amd64 + arm64) → GHCR
+  # ============================================
+  build-docker:
+    name: Build and push Docker image
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Version comes from release-please (the push is on a branch, not a tag),
+          # so feed it explicitly via value= rather than parsing the git ref.
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.release-please.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-please.outputs.version }}
+            type=semver,pattern={{major}},value=${{ needs.release-please.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
